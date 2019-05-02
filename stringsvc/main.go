@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/go-kit/kit/endpoint"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/metrics"
 	kitprometheus "github.com/go-kit/kit/metrics/prometheus"
@@ -15,6 +16,49 @@ import (
 )
 
 type Endpoint func(ctx context.Context, request interface{}) (response interface{}, err error)
+
+type loggingMiddleware struct {
+	logger log.Logger
+	next   StringService
+}
+
+
+// proxymw implements StringService, forwarding Uppercase requests to the
+// provided endpoint, and serving all other (i.e. Count) requests via the
+// next StringService.
+type proxymw struct {
+	next      StringService     // Serve most requests via this service...
+	uppercase endpoint.Endpoint // ...except Uppercase, which gets served by this endpoint
+}
+
+func (mw loggingMiddleware) Uppercase(s string) (output string, err error) {
+	defer func(begin time.Time) {
+		mw.logger.Log(
+			"method", "uppercase",
+			"input", s,
+			"output", output,
+			"err", err,
+			"took", time.Since(begin),
+			)
+	}(time.Now())
+
+	output, err = mw.next.Uppercase(s)
+	return
+}
+
+func (mw loggingMiddleware) Count(s string) (n int) {
+	defer func(begin time.Time) {
+		mw.logger.Log(
+			"method", "count",
+			"input", s,
+			"n", n,
+			"took", time.Since(begin),
+		)
+	}(time.Now())
+
+	n = mw.next.Count(s)
+	return
+}
 
 type instrumentingMiddleware struct {
 	requestCount   metrics.Counter

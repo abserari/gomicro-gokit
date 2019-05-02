@@ -1,6 +1,9 @@
 package main
 
-import "errors"
+import (
+	"errors"
+	"strings"
+)
 
 type StringService interface {
 	Uppercase(string) (string, error)
@@ -10,3 +13,14 @@ type StringService interface {
 type stringService struct{}
 
 var ErrEmpty = errors.New("string is empty")
+
+func (stringService) Uppercase(s string) (string, error) {
+	if s == "" {
+		return "", ErrEmpty
+	}
+	return strings.ToUpper(s), nil
+}
+
+func (stringService) Count(s string) int {
+	return len(s)
+}
